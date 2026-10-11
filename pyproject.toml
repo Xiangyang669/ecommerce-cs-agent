@@ -1,7 +1,7 @@
 [project]
-name = "atlas"
+name = "ecommerce-cs-agent"
 version = "1.0.0"
-description = "一个服务：三层检索 + 多 Agent 编排，带鉴权、限流与配额"
+description = "电商客服智能体：多 Agent 编排 + 自研三层检索内核，带鉴权、限流与配额"
 requires-python = ">=3.12"
 # 三个包合并后的依赖并集（原来三份 requirements 都没版本锁，所以不存在冲突，取并集即可）
 dependencies = [

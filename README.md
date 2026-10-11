@@ -1,14 +1,15 @@
-# atlas
+# 电商客服智能体
 
-**一个服务，两个能力**：拿一份问题去**检索**，或者拿一位用户的话去**走一遍编排**。
-两者都在同一个带**鉴权、限流、配额**的入口后面。
+**一位用户的话进来，它分流、查证据、终判** —— 够就答，不够就转人工。
+底下带一个**自研的三层检索内核**（向量 · 全文 · 图谱 → RRF 融合）当知识底座，
+两者共用同一个带**鉴权、限流、配额**的入口。
 
 ```
                        ┌──────────────────────────────────────┐
-   鉴权 / IP 限流 / 配额 │               atlas                  │
+   鉴权 / IP 限流 / 配额 │           电商客服智能体              │
         ──────────────▶ │                                      │
-                       │  /retrieval/*   三层检索（向量·全文·图谱）│
                        │  /orchestrate/* 多 Agent 编排（LangGraph）│
+                       │  /retrieval/*   三层检索（向量·全文·图谱）│
                        └──────────────────────────────────────┘
 ```
 
@@ -25,11 +26,12 @@
 
 ## 实测
 
-三个包的测试在根目录一次跑完：
+四个目录的测试在根目录一次跑完：
 
 ```
-574 passed, 3 skipped
-  324 检索内核 · 232 编排层 · 18 入口层     （3 条 skip 是需要真实引擎的冒烟测试）
+579 passed, 2 skipped
+  325 检索内核 · 232 编排层 · 18 入口层 · 4 跨包 e2e
+  （2 条 skip 是要真引擎 / 真索引的冒烟测试）
 ```
 
 容器起来之后，真跑出来的：
@@ -51,7 +53,7 @@ POST /orchestrate/ticket → {"route_taken":"ask_user","final_reply":"为了帮�
 ```bash
 pip install -r requirements.txt
 cp .env.example .env          # 填 DEEPSEEK_API_KEY 与 SILICONFLOW_API_KEY
-py -m pytest -q               # 574 passed
+py -m pytest -q               # 579 passed
 
 # 起服务（需要索引，见下）
 docker compose up -d          # → http://localhost:8000
@@ -74,8 +76,9 @@ docker compose up -d          # → http://localhost:8000
 
 融合用 **RRF**：只看排名、不看分数 —— 因为三路分数量纲完全不同（余弦 0~1 / BM25 负值 / 命中数）。
 
-**评测**（错误注入 + 公开横评记录的真实 badcase）：检出率 **0.905**、精确率 **0.963**、干净表误报 **0**。
-判据「融合要赢过最强单路」**没有通过** —— 根因定位在 `packages/ragv1/ACCEPTANCE.md`。
+**评测**（A/B/C/D 四类问题，逐通路 × 逐类别算 recall@5 与 MRR）：判据「融合要赢过最强单路」
+**没有通过** —— A/C/D 三类出现回退，根因是当前 RRF **等权**会稀释强路（完整矩阵、归因
+与已知偏差见 `packages/ragv1/ACCEPTANCE.md`；评估集结构对图谱路有偏向，这一点也写在里面）。
 另有一次 rerank 对照实验，结论是**朴素重排为负收益**（`packages/ragv1/RERANK_AB.md`）。
 
 ## 多 Agent 编排：它怎么决定
@@ -120,13 +123,64 @@ docker compose up -d          # → http://localhost:8000
 
 ## 目录
 
+括号里是该层的测试数与落点。三块各自的分层单独展开 —— 这是这个仓"看着是一个项目"的地方。
+
 ```
-packages/
-├── ragv1/      检索内核（三路召回 + RRF + 评测）  · 含它自己的 README / ACCEPTANCE / RERANK_AB
-└── csagent/    编排层（LangGraph 条件边 + 治理评测）· 含它自己的 README / ACCEPTANCE
-apps/api/       入口（装配 + 鉴权 + 限流 + 统一错误）
-docs/           装配验证记录 · 检索层的设计文档（specs / plans）
+ecommerce-cs-agent/
+├── apps/api/                     入口：装配 + 鉴权 + 限流 + 配额          (18)
+│   ├── atlas/
+│   │   ├── main.py               建 app、挂两个子应用、统一错误格式
+│   │   ├── assemble.py           ★ 接线处：起检索内核 + 建编排图，两块唯一被"接上"的地方
+│   │   ├── guard.py              鉴权（X-API-Key）/ 按 IP 限流 / 每日配额
+│   │   └── env.py                载入 .env —— 必须早于模块级的路径解析，所以单独成文件
+│   ├── scripts/serve.py          本地起服务
+│   └── tests/                    test_assembly · test_guard · test_mounting
+│
+├── packages/
+│   ├── ragv1/                    检索内核                                (325)
+│   │   ├── ragv1/
+│   │   │   ├── ingest/           文档 → 块：解析 / 切分 / 表格 / 图片 / OCR / 降级码
+│   │   │   ├── store/            三种落盘：FTS5（全文）· Chroma（向量）· 图谱
+│   │   │   ├── retrieve/         三路召回：fts / vector / graph
+│   │   │   ├── fusion/           RRF 融合 + 查询自适应权重路由
+│   │   │   ├── evaluation/       评测 harness · QA 集（zh_dev / zh_test）
+│   │   │   ├── api/              检索自身对外的那层服务
+│   │   │   ├── orchestration/    supervisor
+│   │   │   ├── text/             中文分词与词边界（CJK 短语匹配）
+│   │   │   └── config.py · embedding.py · types.py · observability.py · testing.py
+│   │   ├── scripts/              build_index · verify_ingest · bench · eval_v2 · tune_weights …
+│   │   ├── tests/                45 个测试文件（含 fixtures/：表格 md+pdf、两张 png）
+│   │   └── README · ACCEPTANCE · RERANK_AB
+│   │
+│   └── csagent/                  编排层                                  (232)
+│       ├── csagent/
+│       │   ├── graph.py          LangGraph 条件边状态图
+│       │   ├── routing.py        纯函数路由 —— 控制流可审计，不让模型自主决定下一步
+│       │   ├── agents/           triage · business · knowledge · guardrail · reply · handoff
+│       │   ├── api/              create_app(graph) —— 被 apps/api 挂载的那个子应用
+│       │   ├── tools/            订单 / 支付 / 权限 查询
+│       │   ├── adapters/         ★ ragv1_retriever —— 全仓唯一的跨包代码引用
+│       │   ├── evaluation/       cases · policy · harness · report（评测集与逐条复核）
+│       │   ├── memory/           checkpointer（会话状态）
+│       │   └── faults.py · retrieval.py · llm.py · types.py · config.py
+│       │                        · observability.py · testing.py
+│       ├── tests/
+│       └── README · ACCEPTANCE
+│
+├── tests/                        ★ 跨包端到端（e2e）—— 存在的理由就是"单包测试测不到接口"
+│
+├── docs/
+│   ├── assembly-check.md         装配验证记录
+│   └── design/ragv1/             检索层的 spec 与 plan（设计先行，实施在后）
+│
+├── pyproject.toml                单一依赖声明 + pytest 配置（必须 importlib 模式，见文件内注释）
+├── requirements.txt
+├── Dockerfile · docker-compose.yml · .dockerignore
+└── .env.example                  复制成 .env 后填 key
 ```
+
+三个 ★ 标的是**合并之后新增/必须留意的关节**：`assemble.py` 是两块被接起来的地方，
+`ragv1_retriever.py` 是唯一的跨包引用（窄接口），`tests/` 是唯一检查"接起来还能跑"的地方。
 
 ## 设计文档
 
