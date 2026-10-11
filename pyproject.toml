@@ -21,8 +21,11 @@ dependencies = [
 [tool.pytest.ini_options]
 # 三个包各自的目录上 path，import ragv1 / csagent / atlas 都能解析
 pythonpath = ["packages/ragv1", "packages/csagent", "apps/api", "."]
-testpaths = ["packages/ragv1/tests", "packages/csagent/tests", "apps/api/tests"]
+testpaths = ["packages/ragv1/tests", "packages/csagent/tests", "apps/api/tests", "tests"]
 # ⚠️ 必须用 importlib 模式：两个包各自都有 test_api.py / test_harness.py / test_report.py，
 #    默认的 prepend 模式按**基名**给模块命名，三对同名文件会互相顶掉（import file mismatch）。
 addopts = "--import-mode=importlib"
-markers = ["smoke: 需要真实引擎的冒烟测试（默认跳过）"]
+markers = [
+    "smoke: 需要真实引擎的冒烟测试（默认跳过）",
+    "e2e: 跨包端到端（需要索引，缺了会 skip）",
+]

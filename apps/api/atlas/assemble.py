@@ -19,6 +19,11 @@ import os
 import sys
 from pathlib import Path
 
+from atlas.env import load_dotenv
+
+# ⚠️ 必须在下面解析路径**之前**载入 .env —— RAG_INDEX_DIR 是模块级读的
+load_dotenv()
+
 # 合并成 monorepo 之后，两个包就在本仓的 packages/ 下（不再是外面的兄弟目录）。
 # 环境变量仍可覆盖 —— 部署时镜像里没有 .indexes，得指到别处。
 REPO_ROOT = Path(__file__).resolve().parents[3]           # 仓库根
