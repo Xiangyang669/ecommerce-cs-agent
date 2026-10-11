@@ -29,9 +29,9 @@
 四个目录的测试在根目录一次跑完：
 
 ```
-579 passed, 2 skipped
+579 passed, 2 skipped     ← 配好 .env 与索引之后
+574 passed, 7 skipped     ← 刚 clone 下来、什么都没配时（差的 5 条要索引或 API key）
   325 检索内核 · 232 编排层 · 18 入口层 · 4 跨包 e2e
-  （2 条 skip 是要真引擎 / 真索引的冒烟测试）
 ```
 
 容器起来之后，真跑出来的：
@@ -53,7 +53,7 @@ POST /orchestrate/ticket → {"route_taken":"ask_user","final_reply":"为了帮�
 ```bash
 pip install -r requirements.txt
 cp .env.example .env          # 填 DEEPSEEK_API_KEY 与 SILICONFLOW_API_KEY
-py -m pytest -q               # 579 passed
+py -m pytest -q               # 574 passed（配好 .env 与索引后 579）
 
 # 起服务（需要索引，见下）
 docker compose up -d          # → http://localhost:8000
