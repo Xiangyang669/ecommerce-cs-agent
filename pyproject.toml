@@ -1,0 +1,28 @@
+[project]
+name = "atlas"
+version = "1.0.0"
+description = "一个服务：三层检索 + 多 Agent 编排，带鉴权、限流与配额"
+requires-python = ">=3.12"
+# 三个包合并后的依赖并集（原来三份 requirements 都没版本锁，所以不存在冲突，取并集即可）
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "langgraph",
+    "langgraph-checkpoint-sqlite",
+    "chromadb",
+    "networkx",
+    "jieba",
+    "openai",
+    "langfuse",
+    "rapidocr-onnxruntime",
+]
+
+[tool.pytest.ini_options]
+# 三个包各自的目录上 path，import ragv1 / csagent / atlas 都能解析
+pythonpath = ["packages/ragv1", "packages/csagent", "apps/api", "."]
+testpaths = ["packages/ragv1/tests", "packages/csagent/tests", "apps/api/tests"]
+# ⚠️ 必须用 importlib 模式：两个包各自都有 test_api.py / test_harness.py / test_report.py，
+#    默认的 prepend 模式按**基名**给模块命名，三对同名文件会互相顶掉（import file mismatch）。
+addopts = "--import-mode=importlib"
+markers = ["smoke: 需要真实引擎的冒烟测试（默认跳过）"]

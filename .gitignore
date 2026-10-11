@@ -1,0 +1,18 @@
+# 凭据
+.env
+.env.*
+!.env.example
+
+# 数据与索引（96MB，且要用真 embedding 现建）
+.indexes/
+*.db
+*.sqlite
+*.sqlite3
+verify_report.txt
+
+# 学习期的临时产物
+.superpowers/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.tmp

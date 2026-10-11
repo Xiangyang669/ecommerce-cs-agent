@@ -1,0 +1,13 @@
+# 三份 requirements 合并后的并集（原三份都无版本锁，不存在冲突）
+chromadb
+networkx
+jieba
+langgraph
+langgraph-checkpoint-sqlite
+pydantic
+openai
+langfuse
+rapidocr-onnxruntime
+fastapi
+uvicorn
+pytest

@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+.git
+.indexes/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.tmp
