@@ -1,0 +1,16 @@
+services:
+  atlas:
+    build: .
+    ports: ["8000:8000"]
+    env_file: [.env]
+    environment:
+      HOST: "0.0.0.0"
+      # 索引不进仓库（96MB，要用真 embedding 现建）。指到宿主机上已建好的那一份。
+      RAG_INDEX_DIR: /indexes/kb_zh
+      ATLAS_ANON_DAILY: "5"
+      ATLAS_GLOBAL_CAP: "500"
+    volumes:
+      # 不能加 :ro —— Chroma 的 PersistentClient 即使只读查询也要写 sqlite，
+      # 只读挂载会直接抛 "unable to open database file"。（rag-v1 的 README 里记过这条）
+      - ../rag-v1/.indexes:/indexes
+    restart: unless-stopped
